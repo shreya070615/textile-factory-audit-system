@@ -153,3 +153,44 @@ export async function getAuditComparison(
   apiCache[cacheKey] = data;
   return data;
 }
+
+export interface BackendHealth {
+  status: string;
+  uptimeSeconds: number;
+  timestamp: string;
+  version: string;
+  service: string;
+  companiesMonitored: string[];
+  totalReadingsTracked: number;
+  aiModule: {
+    provider: string;
+    active: boolean;
+  };
+}
+
+export async function getBackendHealth(): Promise<BackendHealth | null> {
+  try {
+    const response = await fetch('/api/v1/health');
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch {
+    // Server offline
+  }
+  return null;
+}
+
+export async function triggerSimulationTick(companyName: string) {
+  try {
+    const encoded = encodeURIComponent(companyName);
+    const response = await fetch(`/api/v1/companies/${encoded}/simulate-tick`, {
+      method: 'POST',
+    });
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch {
+    // fallback
+  }
+  return null;
+}

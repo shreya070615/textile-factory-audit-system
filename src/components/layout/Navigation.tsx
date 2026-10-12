@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserSession } from '../auth/LoginView';
+import { getBackendHealth, BackendHealth } from '../../services/api';
 
 export type TabId =
   | 'dashboard'
@@ -198,6 +199,26 @@ interface TopbarProps {
 }
 
 export function Topbar({ currentTab, userSession, onLogout }: TopbarProps) {
+  const [health, setHealth] = useState<BackendHealth | null>(null);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const check = async () => {
+      const data = await getBackendHealth();
+      if (isMounted) {
+        setHealth(data);
+        setChecked(true);
+      }
+    };
+    check();
+    const interval = setInterval(check, 10000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   const titles: Record<TabId, string> = {
     dashboard: 'Dashboard',
     dataset: 'Dataset Overview',
@@ -220,10 +241,29 @@ export function Topbar({ currentTab, userSession, onLogout }: TopbarProps) {
           <span>📂</span>
           <span>Synthetic CSV Dataset</span>
         </span>
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#e8f5f1] text-[#1d7a5f]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#1d7a5f] animate-pulse" />
-          <span>API Online</span>
-        </span>
+
+        {checked && health ? (
+          <span
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#e8f5f1] text-[#1d7a5f] border border-[#c8e6c9]/60"
+            title={`Backend: ${health.service} (Uptime: ${health.uptimeSeconds}s) | AI: ${health.aiModule.provider} | Total Readings: ${health.totalReadingsTracked.toLocaleString()}`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#1d7a5f] animate-pulse" />
+            <span>Backend Connected (:5000)</span>
+          </span>
+        ) : checked && !health ? (
+          <span
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#fff8e1] text-[#b78103] border border-[#ffe082]"
+            title="Backend server offline - using client fallback data"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b]" />
+            <span>Fallback Mode</span>
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#f1f5f9] text-[#64748b]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#94a3b8] animate-ping" />
+            <span>Connecting API...</span>
+          </span>
+        )}
 
         {userSession && (
           <div className="flex items-center gap-2 pl-2 border-l border-[#dde5ea]">
